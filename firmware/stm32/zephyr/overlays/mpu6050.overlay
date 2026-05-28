@@ -1,0 +1,16 @@
+/ {
+	aliases {
+		mpu6050 = &mpu6050;
+	};
+};
+
+/* MPU6050 IMU su I2C1 */
+&i2c1 {
+	mpu6050: mpu6050@68 {
+		compatible = "invensense,mpu6050";
+		reg = <0x68>;
+		status = "okay";
+		accel-fs = <2>;  /* ±2g (default) */
+		gyro-fs = <250>; /* ±250 deg/s (default) */
+	};
+};
