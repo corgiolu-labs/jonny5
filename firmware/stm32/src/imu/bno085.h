@@ -1,5 +1,5 @@
 /*
- * JONNY5 - Minimal BNO085 driver (Phase 2: standalone, no MPU6050 interaction)
+ * JONNY5 - Minimal BNO085 driver (SHTP Rotation Vector su I2C1)
  *
  * Talks to a Hillcrest/CEVA BNO085 over I2C using the SHTP transport protocol.
  * Exposes only what Phase 3 needs to validate the sensor: init + rotation-vector

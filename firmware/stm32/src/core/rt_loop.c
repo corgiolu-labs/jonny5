@@ -31,14 +31,54 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/counter.h>
 #include <zephyr/logging/log.h>
 
 LOG_MODULE_REGISTER(rt_loop, LOG_LEVEL_INF);
+
+/* ── Verbosità diagnostica del RT loop ─────────────────────────────────────
+ * I LOG_INF diagnostici lungo il path 1 kHz (CTRL / ARM / mode / GUARD /
+ * HEAD calib) hanno costo variabile (copia degli argomenti nel buffer di log
+ * deferred) e introducono jitter sporadico nelle iterazioni in cui scattano.
+ * Con RT_LOOP_VERBOSE=0 (default) RT_DBG() si espande a no-op: gli argomenti
+ * non vengono nemmeno valutati e il loop resta deterministico.
+ * I LOG di SICUREZZA (WATCHDOG) e gli errori restano SEMPRE attivi.
+ * Per il debug sul campo basta ricompilare con -DRT_LOOP_VERBOSE=1. */
+#ifndef RT_LOOP_VERBOSE
+#define RT_LOOP_VERBOSE 0
+#endif
+#if RT_LOOP_VERBOSE
+#define RT_DBG(...) LOG_INF(__VA_ARGS__)
+#else
+#define RT_DBG(...) ((void)0)
+#endif
 
 /* RT loop thread dedicato (evita dipendenze/limiti system workqueue) */
 static struct k_thread rt_thread;
 static k_tid_t rt_tid;
 K_THREAD_STACK_DEFINE(rt_thread_stack, 4096);
+
+/* ── Sorgente di tick hardware a 1 kHz (TIM6) ──────────────────────────────
+ * Il tick dello scheduler RTOS e' 1 ms (CONFIG_SYS_CLOCK_TICKS_PER_SEC=1000):
+ * un k_usleep() sub-tick viene arrotondato fino a ~2 tick -> il loop misurava
+ * ~512 Hz. Usiamo invece TIM6 (basic timer, nessun pin I/O -> non tocca i PWM)
+ * come counter: genera un IRQ di UPDATE ogni 1000 us ESATTI, la cui ISR sblocca
+ * il thread RT tramite questo semaforo. Periodo deterministico e indipendente
+ * dalla granularita' dello scheduler; il thread dorme fra un tick e l'altro
+ * (0% CPU sprecata). Vedi zephyr/overlays/rt_timer.overlay e prj.conf. */
+static const struct device *const rt_tick_dev =
+    DEVICE_DT_GET(DT_NODELABEL(rt_tick_counter));
+K_SEM_DEFINE(rt_tick_sem, 0, 1);
+/* Overrun = il tick e' arrivato mentre eravamo ancora dentro rt_loop_step().
+ * Con step ~43 us non dovrebbe mai accadere: e' la prova quantitativa che il
+ * loop non perde tick. Pubblicato nella riga [RTPERF]. */
+static volatile uint32_t rt_tick_overruns;
+
+static void rt_tick_isr_cb(const struct device *dev, void *user_data)
+{
+    (void)dev; (void)user_data;
+    k_sem_give(&rt_tick_sem);
+}
 
 
 /* Periodo RT loop: 1 ms = 1000 Hz */
@@ -46,10 +86,23 @@ K_THREAD_STACK_DEFINE(rt_thread_stack, 4096);
 #define RT_LOOP_PERIOD_US 1000
 
 /* Thread IMU dedicato 400 Hz (fuori dal RT loop; prioritÃƒÆ’Ã‚Â  < system workqueue 5) */
-/* Priorita' scheduling: RT(5) > IMU(6) > SPI service(7).
- * IMU e' unico consumatore del bus I2C1 (MPU6050); tenerlo sopra spi_service
+/* Priorita' di scheduling (Zephyr: numero piu' basso = priorita' piu' alta;
+ * tutte preemptible): RT(4) > system workqueue(5) > IMU(6) > SPI service(7).
+ *
+ * RT_THREAD_PRIO=4 tiene il tick di controllo 1 kHz una tacca SOPRA il system
+ * workqueue (CONFIG_SYSTEM_WORKQUEUE_PRIORITY=5): prima erano entrambi a 5 e,
+ * a parita' di priorita', il flush dei log deferred poteva ritardare il loop
+ * oltre il tick TIM6 -> overrun. Restando preemptible (NON cooperativo) il loop
+ * e' sempre prelazionabile dagli ISR (TIM6, UART, I2C, DMA SPI) e, essendo
+ * cortissimo (~43 us) e auto-sospeso sul semaforo, non affama il workqueue
+ * (che mantiene >95% CPU). NB: cooperativo (priorita' negativa) e' stato
+ * scartato di proposito: congelerebbe tutto, console inclusa, se un domani il
+ * loop smettesse di bloccarsi sul semaforo.
+ *
+ * IMU e' unico consumatore del bus I2C1 (BNO085); tenerlo sopra spi_service
  * evita che le wake-up del DMA SPI lo preemprano durante il path I2C e il
  * rischio di wedge del bus (SDA trattenuto basso) osservato in campo. */
+#define RT_THREAD_PRIO 4
 #define IMU_THREAD_STACK_SZ 8192
 #define IMU_THREAD_PRIO 6
 #define IMU_PERIOD_US 2500
@@ -149,6 +202,13 @@ volatile uint8_t g_rt_loop_stage = 0;
  * 0 = ancora non misurato (warm-up). Aggiornato da rt_thread_fn dopo ogni
  * iterazione, pubblicato in TELEMETRY reserved[62-63] da j5_build_frame. */
 volatile uint16_t g_rt_loop_period_us = 0;
+
+/* Tempo di esecuzione PURO di rt_loop_step() in microsecondi (EWMA ~16 iter).
+ * Distinto da g_rt_loop_period_us (che include anche lo sleep/quantizzazione
+ * tick): serve a separare il costo di CALCOLO dal costo di SCHEDULING. Se
+ * g_rt_step_us << g_rt_loop_period_us, il collo di bottiglia non è il calcolo
+ * ma la granularità del tick del kernel. 0 = non ancora misurato. */
+volatile uint16_t g_rt_step_us = 0;
 
 /* Diagnostica teleop VR gating */
 volatile uint8_t g_vr_armed = 0;
@@ -393,7 +453,7 @@ static void rt_loop_step(void)
                     /* Log solo quando cambia arm (no spam) */
                     if (g_vr_armed != arm_before)
                     {
-                        LOG_INF("[ARM] d_edge=%u i_edge=%u deadman=%u allowed=%u input=%u -> arm=%u",
+                        RT_DBG("[ARM] d_edge=%u i_edge=%u deadman=%u allowed=%u input=%u -> arm=%u",
                                (unsigned)(deadman_edge ? 1U : 0U),
                                (unsigned)(inputs_edge ? 1U : 0U),
                                (unsigned)(deadman_now ? 1U : 0U),
@@ -420,7 +480,7 @@ static void rt_loop_step(void)
                     static uint32_t ctrl_log = 0;
                     if ((ctrl_log++ % 1000U) == 0U)
                     {
-                        LOG_INF("[CTRL] st=%u m=%u dm=%u ok=%u jx=%d jy=%d p=%d y=%d i=%u",
+                        RT_DBG("[CTRL] st=%u m=%u dm=%u ok=%u jx=%d jy=%d p=%d y=%d i=%u",
                                (unsigned)state_machine_get_state(),
                                (unsigned)j5vr_current.mode,
                                (unsigned)(deadman_active ? 1U : 0U),
@@ -454,9 +514,9 @@ static void rt_loop_step(void)
                         if (j5vr_current.mode == 3U || j5vr_current.mode == 4U || j5vr_current.mode == 5U)
                         {
                             j5vr_reset_head_calib();
-                            LOG_INF("[J5VR] HEAD calib reset (mode=%u)", j5vr_current.mode);
+                            RT_DBG("[J5VR] HEAD calib reset (mode=%u)", j5vr_current.mode);
                         }
-                        LOG_INF("[J5VR] mode=%u", j5vr_current.mode);
+                        RT_DBG("[J5VR] mode=%u", j5vr_current.mode);
                         last_mode = j5vr_current.mode;
                     }
                 }
@@ -521,7 +581,7 @@ static void rt_loop_step(void)
 
                                 if (!last_guarded || (freeze != last_freeze))
                                 {
-                                    LOG_INF("[GUARD] armed=%u freeze=%u input=%u stable_ms=%u",
+                                    RT_DBG("[GUARD] armed=%u freeze=%u input=%u stable_ms=%u",
                                            (unsigned)g_vr_armed,
                                            (unsigned)(freeze ? 1U : 0U),
                                            (unsigned)(inputs_active ? 1U : 0U),
@@ -580,7 +640,12 @@ static void rt_loop_step(void)
 
     g_rt_loop_stage = 80;
 #if DT_NODE_EXISTS(CENTER_BUTTON_NODE)
-    if (center_button_initialized && device_is_ready(center_button_dev))
+    /* Polling bottone decimato a ~50 Hz (ogni 20 tick). Un pulsante fisico non
+     * richiede campionamento a 1 kHz, e la lettura GPIO è I/O che aggiunge
+     * overhead fisso a OGNI iterazione del loop. Con debounce a 5 campioni @
+     * 50 Hz si ottengono ~100 ms di filtro, adeguati per un tasto manuale. */
+    if (((g_rt_loop_ticks % 20U) == 0U) &&
+        center_button_initialized && device_is_ready(center_button_dev))
     {
         int ret = gpio_pin_get(center_button_dev, CENTER_BUTTON_GPIO_PIN);
         bool button_pressed = (ret < 0) ? false : (ret == 0);
@@ -616,43 +681,70 @@ static void rt_thread_fn(void *a, void *b, void *c)
 {
     (void)a; (void)b; (void)c;
 
-    int64_t next_us = (int64_t)k_uptime_get() * 1000 + RT_LOOP_PERIOD_US;
-
-    /* EWMA del periodo loop in unita' (microsecondi * 16) per precisione.
-     * alpha = 1/16: new = old + (sample - old)/16. Converge in ~50 iterazioni.
-     * Misura il tempo "wall-clock" fra inizio di due iterazioni consecutive
-     * (include rt_loop_step + k_usleep + jitter scheduler Zephyr). */
-    uint32_t prev_cyc = k_cycle_get_32();
+    /* EWMA (microsecondi * 16, alpha = 1/16) di due metriche distinte:
+     *  - period: tempo wall-clock fra inizio di due iterazioni consecutive
+     *            (= step + sleep + jitter scheduler) → g_rt_loop_period_us
+     *  - step:   tempo PURO di rt_loop_step() → g_rt_step_us
+     * Il confronto fra i due isola il costo di calcolo da quello di scheduling. */
+    uint32_t prev_iter_cyc = k_cycle_get_32();
     uint32_t period_us_ewma_x16 = 0;
+    uint32_t step_us_ewma_x16 = 0;
 
     while (1) {
-        rt_loop_step();
+        /* Attendi il tick hardware a 1 kHz (TIM6 -> ISR -> semaforo). Timeout
+         * 2 ms = rete di sicurezza: se la sorgente HW si fermasse il loop non
+         * si blocca all'infinito ma prosegue (degradato) tenendo vivi servo,
+         * watchdog e servizio SPI. In funzionamento normale il semaforo arriva
+         * ogni 1000 us esatti, ben dentro il timeout. */
+        if (k_sem_count_get(&rt_tick_sem) > 0u) {
+            rt_tick_overruns++; /* tick gia' pendente: l'iter precedente ha sforato 1 ms */
+        }
+        (void)k_sem_take(&rt_tick_sem, K_MSEC(2));
 
-        /* Calcolo dt rispetto all'iterazione precedente e aggiorna EWMA */
-        uint32_t now_cyc = k_cycle_get_32();
-        uint32_t dt_cyc = now_cyc - prev_cyc;  /* unsigned subtraction wraps natively */
-        prev_cyc = now_cyc;
-        uint32_t dt_us = (uint32_t)k_cyc_to_us_floor32(dt_cyc);
-        /* Sanity: scarta outlier (boot, debugger pause, etc.). Range valido
-         * 100..60000 us copre 16-10000 Hz; target 1000 us. */
-        if (dt_us >= 100u && dt_us <= 60000u) {
+        uint32_t iter_start_cyc = k_cycle_get_32();
+
+        /* Periodo = inizio_iter(N) - inizio_iter(N-1) */
+        uint32_t period_dt_us = (uint32_t)k_cyc_to_us_floor32(iter_start_cyc - prev_iter_cyc);
+        prev_iter_cyc = iter_start_cyc;
+        /* Sanity: scarta outlier (boot, pause debugger). 100..60000 us = 16-10000 Hz. */
+        if (period_dt_us >= 100u && period_dt_us <= 60000u) {
             if (period_us_ewma_x16 == 0u) {
-                /* Prima misura valida: prime EWMA per evitare warm-up lento */
-                period_us_ewma_x16 = dt_us * 16u;
+                period_us_ewma_x16 = period_dt_us * 16u;
             } else {
-                /* EWMA: x16_new = x16_old - x16_old/16 + sample */
                 period_us_ewma_x16 -= (period_us_ewma_x16 >> 4);
-                period_us_ewma_x16 += dt_us;
+                period_us_ewma_x16 += period_dt_us;
             }
             g_rt_loop_period_us = (uint16_t)(period_us_ewma_x16 >> 4);
         }
 
-        int64_t now_us = (int64_t)k_uptime_get() * 1000;
-        int64_t sleep_us = next_us - now_us;
-        if (sleep_us > 0) {
-            k_usleep((uint32_t)sleep_us);
+        rt_loop_step();
+
+        /* S = tempo puro di rt_loop_step() */
+        uint32_t step_dt_us = (uint32_t)k_cyc_to_us_floor32(k_cycle_get_32() - iter_start_cyc);
+        if (step_dt_us <= 60000u) {
+            if (step_us_ewma_x16 == 0u) {
+                step_us_ewma_x16 = step_dt_us * 16u;
+            } else {
+                step_us_ewma_x16 -= (step_us_ewma_x16 >> 4);
+                step_us_ewma_x16 += step_dt_us;
+            }
+            g_rt_step_us = (uint16_t)(step_us_ewma_x16 >> 4);
         }
-        next_us += RT_LOOP_PERIOD_US;
+
+        /* Telemetria prestazioni su console (USART2 / ST-Link VCP) ogni ~5 s.
+         * Fuori dal punto critico (scatta 1 volta ogni 5000 iter); utile per
+         * leggere periodo/step/freq durante il test senza la dashboard. */
+        if ((g_rt_loop_ticks % 5000U) == 0U) {
+            LOG_INF("[RTPERF] period=%u us  step=%u us  overruns=%u  (~%u Hz)",
+                    (unsigned)g_rt_loop_period_us,
+                    (unsigned)g_rt_step_us,
+                    (unsigned)rt_tick_overruns,
+                    (unsigned)(g_rt_loop_period_us ? (1000000U / g_rt_loop_period_us) : 0U));
+        }
+
+        /* Nessun k_usleep qui: la cadenza e' data dal tick hardware TIM6,
+         * atteso in cima al loop. Il thread torna a dormire sul semaforo,
+         * quindi non spreca CPU fra un tick e l'altro. */
     }
 }
 
@@ -709,13 +801,42 @@ void rt_loop_init(void)
 void rt_loop_start(void)
 {
     if (!rt_tid) {
+        /* Avvia la sorgente di tick hardware (TIM6) PRIMA del thread RT.
+         * counter_us_to_ticks() converte usando la frequenza REALE del timer
+         * letta dal driver, quindi il periodo resta esattamente
+         * RT_LOOP_PERIOD_US a prescindere dal clock di bus APB1.
+         * Se il counter non parte, il thread RT non resta bloccato: usa
+         * k_sem_take con timeout 2 ms (vedi rt_thread_fn) e prosegue in
+         * modalita' degradata tenendo vivi servo/WDT/SPI. */
+        if (device_is_ready(rt_tick_dev)) {
+            struct counter_top_cfg top_cfg = {
+                .ticks = counter_us_to_ticks(rt_tick_dev, RT_LOOP_PERIOD_US),
+                .callback = rt_tick_isr_cb,
+                .user_data = NULL,
+                .flags = 0,
+            };
+            int rc = counter_set_top_value(rt_tick_dev, &top_cfg);
+            if (rc == 0) {
+                rc = counter_start(rt_tick_dev);
+            }
+            if (rc == 0) {
+                LOG_INF("[RT] 1 kHz tick = TIM6 hw (%u counts/period @ %u Hz)",
+                        (unsigned)top_cfg.ticks,
+                        (unsigned)counter_get_frequency(rt_tick_dev));
+            } else {
+                LOG_ERR("[RT] TIM6 tick init failed (%d) - degraded timeout mode", rc);
+            }
+        } else {
+            LOG_ERR("[RT] TIM6 counter not ready - degraded timeout mode");
+        }
+
         rt_tid = k_thread_create(
             &rt_thread,
             rt_thread_stack,
             K_THREAD_STACK_SIZEOF(rt_thread_stack),
             rt_thread_fn,
             NULL, NULL, NULL,
-            5, /* stessa prioritÃƒÆ’Ã‚Â  system workqueue configurata */
+            RT_THREAD_PRIO, /* 4 = una tacca sopra il system workqueue (5); vedi nota a inizio file */
             0,
             K_NO_WAIT
         );

@@ -17,6 +17,13 @@
 #include "servo/servo_control.h"
 #include "core/rt_loop.h"
 #include <zephyr/sys/printk.h>
+
+/* Dump per-frame [VR_RX]/[IK_RX] su console: printk SINCRONI nel thread SPI
+ * service (rate-limited 1 ogni 50 frame). Pura diagnostica: a 0 sono compilati
+ * fuori (console pulita, zero costo sul path SPI). Mettere a 1 per riabilitarli. */
+#ifndef J5_PROTO_RX_DEBUG
+#define J5_PROTO_RX_DEBUG 0
+#endif
 #include <string.h>
 
 /* =========================================================
@@ -169,6 +176,7 @@ void j5vr_parse_payload(const uint8_t *p)
         g_j5vr_latest.mode5_arm_target_cdeg[2] = be16_to_s16(p + 44);
     }
 
+#if J5_PROTO_RX_DEBUG
     /* Log rate-limited: conferma parse su STM32 (ogni 50 frame) */
     static uint32_t vr_rx_log = 0;
     if ((vr_rx_log++ % 50U) == 0U)
@@ -191,6 +199,7 @@ void j5vr_parse_payload(const uint8_t *p)
                (int)g_j5vr_latest.mode5_arm_target_cdeg[1],
                (int)g_j5vr_latest.mode5_arm_target_cdeg[2]);
     }
+#endif
 
 }
 
@@ -213,6 +222,7 @@ void j5ik_parse_payload(const uint8_t *p)
     g_j5vr_latest.mode = g_j5ik_latest.mode;
     g_j5vr_latest.vr_heartbeat = g_j5ik_latest.vr_heartbeat;
 
+#if J5_PROTO_RX_DEBUG
     static uint32_t ik_rx_log = 0;
     if ((ik_rx_log++ % 50U) == 0U)
     {
@@ -230,6 +240,7 @@ void j5ik_parse_payload(const uint8_t *p)
                (int)g_j5ik_latest.target_cdeg[4],
                (int)g_j5ik_latest.target_cdeg[5]);
     }
+#endif
 }
 
 /* =========================================================
@@ -334,7 +345,7 @@ void j5_build_frame(j5_frame_t *frame, j5_frame_type_t type, uint16_t seq)
             float_to_be32(snap.temp,    frame->payload + 24);
         }
 
-        /* imu_valid = 1 solo se snapshot presente e filtro Madgwick convergito */
+        /* imu_valid = 1 solo se snapshot presente e quaternione BNO085 valido */
         frame->payload[28] = (snap_ok && imu_is_orientation_valid()) ? 1u : 0u;
 
         if (snap_ok)

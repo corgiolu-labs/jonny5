@@ -873,6 +873,11 @@
       if (videoDebugState.stalledL || videoDebugState.stalledR) {
         console.warn("[XR] video currentTime stalled", { dL, dR, nowL, nowR, pausedL: webrtcVidL.paused, pausedR: webrtcVidR.paused });
       }
+      // Auto-recupero: 2 check consecutivi di stallo (~1.6s) su occhio attivo -> riconnessione WHEP.
+      videoDebugState._stallStreakL = videoDebugState.stalledL ? ((videoDebugState._stallStreakL || 0) + 1) : 0;
+      videoDebugState._stallStreakR = videoDebugState.stalledR ? ((videoDebugState._stallStreakR || 0) + 1) : 0;
+      if (videoDebugState._stallStreakL >= 2) { videoDebugState._stallStreakL = 0; _recoverEye("L"); }
+      if (videoDebugState._stallStreakR >= 2) { videoDebugState._stallStreakR = 0; _recoverEye("R"); }
       videoDebugState._prevTimeL = nowL;
       videoDebugState._prevTimeR = nowR;
     }, 800);
@@ -1200,6 +1205,43 @@
     }
 
     let webrtcPcL = null, webrtcPcR = null;
+
+    // Auto-recupero di un occhio bloccato: riconnette lo stream WHEP e riassegna lo
+    // srcObject allo STESSO <video> (il binding GL non cambia). Alla connessione MediaMTX
+    // invia subito un keyframe -> l'occhio riparte. Connetto il nuovo PC PRIMA di chiudere
+    // il vecchio (niente buco). Guardie anti-loop: flag "in recupero" per lato + cooldown 4s.
+    async function _recoverEye(side) {
+      const isL = (side === "L");
+      if (isL ? videoDebugState._recoveringL : videoDebugState._recoveringR) return;
+      const nowMs = Date.now();
+      const lastMs = (isL ? videoDebugState._lastRecoverMsL : videoDebugState._lastRecoverMsR) || 0;
+      if (nowMs - lastMs < 4000) return; // cooldown anti-storm
+      if (isL) { videoDebugState._recoveringL = true; videoDebugState._lastRecoverMsL = nowMs; }
+      else { videoDebugState._recoveringR = true; videoDebugState._lastRecoverMsR = nowMs; }
+      const path = isL ? "cam0" : "cam1";
+      const vid = isL ? webrtcVidL : webrtcVidR;
+      const oldPc = isL ? webrtcPcL : webrtcPcR;
+      console.warn("[XR] auto-recover eye " + side + " (" + path + ")");
+      try {
+        const { stream, pc } = await connectWHEP(path); // connetti il nuovo PRIMA di chiudere il vecchio
+        if (isL) webrtcPcL = pc; else webrtcPcR = pc;
+        try { if (oldPc) oldPc.close(); } catch (_) {}
+        vid.srcObject = stream;
+        try { await vid.play(); } catch (_) {}
+        if (isL) videoDebugState.cam0Connected = true; else videoDebugState.cam1Connected = true;
+        // ri-baseline del monitor per evitare un falso ri-trigger immediato
+        videoDebugState._prevTimeL = undefined;
+        videoDebugState._stallStreakL = 0;
+        videoDebugState._stallStreakR = 0;
+        console.warn("[XR] eye " + side + " recovered");
+      } catch (e) {
+        // lascio il vecchio PC com'era: al prossimo stallo (dopo cooldown) si ritenta
+        console.error("[XR] eye " + side + " recovery failed:", e && e.message ? e.message : e);
+      } finally {
+        if (isL) videoDebugState._recoveringL = false; else videoDebugState._recoveringR = false;
+      }
+    }
+
     let _webrtcLatencyTimer = null;
     var _videoMonitorTimer = null;
     const videoDebugStateLatency = {
@@ -2034,9 +2076,25 @@
         _hmdTickCount++;
         // Pubblica session.frameRate ogni 4° tick (~2 s): cambia raramente.
         if (_hmdTickCount % 4 === 0) {
-          const fr = xrSession.frameRate || null;
           const supported = (typeof xrSession.supportedFrameRates !== "undefined")
             ? Array.from(xrSession.supportedFrameRates || []) : [];
+          let fr = (Number.isFinite(xrSession.frameRate) && xrSession.frameRate > 0)
+            ? xrSession.frameRate : null;
+          if (fr == null) {
+            // Quest 1: session.frameRate undefined -> stima dal loop XR,
+            // agganciata al rate supportato piu' vicino (entro +/-8%).
+            const m = _hmdMeasuredFps();
+            if (m != null) {
+              let best = m;
+              if (supported.length) {
+                const near = supported.reduce((p, c) => Math.abs(c - m) < Math.abs(p - m) ? c : p, supported[0]);
+                if (Math.abs(near - m) <= 0.08 * near) best = near;
+              }
+              fr = best;
+            } else if (supported.length) {
+              fr = Math.max(...supported);
+            }
+          }
           safeSend(teleopWs, {
             type: "vr_session_refresh",
             frame_rate_hz: fr,
@@ -2070,9 +2128,25 @@
       // Invio immediato (non aspettare 2 s dopo apertura sessione)
       setTimeout(() => {
         if (!xrSession) return;
-        const fr = xrSession.frameRate || null;
         const supported = (typeof xrSession.supportedFrameRates !== "undefined")
           ? Array.from(xrSession.supportedFrameRates || []) : [];
+        let fr = (Number.isFinite(xrSession.frameRate) && xrSession.frameRate > 0)
+          ? xrSession.frameRate : null;
+        if (fr == null) {
+          // Quest 1: session.frameRate undefined -> stima dal loop XR,
+          // agganciata al rate supportato piu' vicino (entro +/-8%).
+          const m = _hmdMeasuredFps();
+          if (m != null) {
+            let best = m;
+            if (supported.length) {
+              const near = supported.reduce((p, c) => Math.abs(c - m) < Math.abs(p - m) ? c : p, supported[0]);
+              if (Math.abs(near - m) <= 0.08 * near) best = near;
+            }
+            fr = best;
+          } else if (supported.length) {
+            fr = Math.max(...supported);
+          }
+        }
         safeSend(teleopWs, {
           type: "vr_session_refresh",
           frame_rate_hz: fr,
@@ -2103,6 +2177,16 @@
     }
 
     function _safeNum(x) { const v = Number(x); return Number.isFinite(v) ? v : 0; }
+    // Stima del refresh rate reale dell'HMD dai timestamp del loop XR
+    // (necessaria su Quest 1, dove session.frameRate resta undefined).
+    // Ritorna Hz (float) oppure null se non ci sono abbastanza campioni.
+    function _hmdMeasuredFps() {
+      const fa = (typeof onXRFrame !== "undefined") ? onXRFrame._frameStamps : null;
+      if (!fa || fa.length < 8) return null;
+      const span = fa[fa.length - 1] - fa[0];
+      if (span <= 0) return null;
+      return (fa.length - 1) * 1000 / span;
+    }
     // =========================================================================
     // SECTION 8: XR SESSION — Frame loop, controller input, intent dispatch
     // =========================================================================
@@ -2110,6 +2194,14 @@
       const session = frame.session;
       const pose = frame.getViewerPose(xrRefSpace);
       session.requestAnimationFrame(onXRFrame);
+      // Campiona i timestamp del loop di presentazione XR per stimare il
+      // refresh reale dell'HMD (serve su Quest 1, dove session.frameRate e'
+      // undefined). Mantiene ~1 s di storia.
+      {
+        const fa = onXRFrame._frameStamps || (onXRFrame._frameStamps = []);
+        fa.push(t);
+        while (fa.length > 2 && (t - fa[0]) > 1000) fa.shift();
+      }
       if (!pose) return;
 
       const glLayer = session.renderState.baseLayer;

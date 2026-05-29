@@ -1,6 +1,6 @@
 /*
- * JONNY5-3.0 - IMU Module (MPU6050)
- * Lettura dati accelerometro e giroscopio via I2C
+ * JONNY5 - IMU Module (BNO085)
+ * Orientamento BNO085: quaternione fuso (Rotation Vector) via I2C1
  */
 
 #ifndef IMU_H
@@ -11,18 +11,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* Struttura dati IMU */
-struct imu_data {
-	float accel_x;  /* Accelerazione X (m/s²) */
-	float accel_y;  /* Accelerazione Y (m/s²) */
-	float accel_z;  /* Accelerazione Z (m/s²) */
-	float gyro_x;   /* Velocità angolare X (rad/s) */
-	float gyro_y;   /* Velocità angolare Y (rad/s) */
-	float gyro_z;   /* Velocità angolare Z (rad/s) */
-	float temp;     /* Temperatura (°C) */
-};
-
-/* Quaternione IMU stimato (Madgwick) */
+/* Quaternione IMU stimato (BNO085) */
 struct imu_quat {
 	float w;
 	float x;
@@ -33,7 +22,7 @@ struct imu_quat {
 /**
  * Snapshot IMU coerente — aggiornato dal thread IMU (400 Hz) via double-buffer atomico.
  * Tutti i consumer (SPI TELEMETRY, monitor) leggono tramite imu_get_snapshot();
- * nessun consumer chiama imu_read() direttamente.
+ * nessun consumer legge i registri raw direttamente.
  */
 struct imu_snapshot {
 	float accel_x;
@@ -72,7 +61,7 @@ void imu_get_quaternion(struct imu_quat *out);
  * Lettura snapshot IMU completo dal double-buffer atomico.
  * Lock-free: singolo atomic_get + copia strutturale, zero retry.
  * Ritorna true se esiste almeno uno snapshot valido, false se IMU non
- * ha ancora completato almeno un aggiornamento Madgwick.
+ * ha ancora prodotto almeno uno snapshot valido.
  */
 bool imu_get_snapshot(imu_snapshot_t *out);
 
@@ -80,7 +69,7 @@ bool imu_get_snapshot(imu_snapshot_t *out);
 /* I2C bus recovery (AN4559): sblocca SDA/SCL dopo reset/flash */
 void imu_i2c_bus_recovery(void);
 
-/* True se l'orientamento IMU (quaternione Madgwick) è basato su campioni validi */
+/* True se l'orientamento IMU (quaternione BNO085) è basato su campioni validi */
 bool imu_is_orientation_valid(void);
 
 /** Azzera orientamento e snapshot quando IMU è disabilitata (IMUOFF). Da chiamare da UART su IMUOFF. */

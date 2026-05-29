@@ -2,11 +2,13 @@ cmake_minimum_required(VERSION 3.13.1)
 set(DTC_OVERLAY_FILE
     ${CMAKE_CURRENT_SOURCE_DIR}/overlays/uart.overlay
     ${CMAKE_CURRENT_SOURCE_DIR}/overlays/i2c.overlay
-    # mpu6050.overlay dropped: production backend is BNO085, talked to via
-    # raw i2c_read/i2c_write from src/imu/bno085.c (no devicetree node needed).
-    # The overlay file is kept on disk for reversibility; re-add this line
-    # and set CONFIG_MPU6050=y in prj.conf to revert to the MPU6050 backend.
+    # Backend IMU: BNO085 (i2c_read/write raw da src/imu/bno085.c, nessun nodo DT).
     ${CMAKE_CURRENT_SOURCE_DIR}/overlays/pwm.overlay
+    # TIM6 = sorgente di tick hardware a 1 kHz per il RT loop di controllo
+    # (vedi rt_timer.overlay e src/core/rt_loop.c). NB: questa lista, non
+    # board_build.zephyr.overlays in platformio.ini, e' la fonte effettiva
+    # degli overlay applicati al devicetree.
+    ${CMAKE_CURRENT_SOURCE_DIR}/overlays/rt_timer.overlay
 )
 include($ENV{ZEPHYR_BASE}/cmake/app/boilerplate.cmake NO_POLICY_SCOPE)
 project(JONNY5_3.0)
