@@ -72,10 +72,15 @@ void j5vr_head_init_defaults(j5vr_head_params_t *p, j5vr_head_state_t *st)
     p->max_step        = 0.060f;
     p->joy_dz          = 0.10f;
     p->head_sensitivity = 1.0f;
-    /* ROLL(robot)  <- YAW(visore)
-     * PITCH(robot) <- ROLL(visore)
-     * YAW(robot)   <- PITCH(visore) */
-    p->sign_yaw        = 1.0f;
+    /* Routing polso — default allineato alla config operativa verificata
+     * (routing_config.json), così il polso è corretto gia' al boot e al cambio
+     * modalita' senza dipendere dal push SET_VR_PARAMS dal Pi. La patch-bay VR
+     * espone la CORRISPONDENZA FISICA REALE asse-per-asse (niente diagonale
+     * "cosmetica"): ogni cella dice quale asse del visore guida davvero il servo:
+     *   ROLL(robot)  <- YAW(visore)   [sign_yaw = -1: ROLL in opposizione a YAW visore]
+     *   PITCH(robot) <- ROLL(visore)
+     *   YAW(robot)   <- PITCH(visore) */
+    p->sign_yaw        = -1.0f;
     p->sign_pitch      = 1.0f;
     p->sign_roll       = 1.0f;
     p->src_roll        = 0;

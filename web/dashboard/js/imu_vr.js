@@ -93,13 +93,15 @@ function onVrConfigAppliedMessage(msg) {
 // sign: +1 concordi (verde), -1 invertiti (rosso)
 // enable per servo: _pbEn[servo] = true/false (toggle ON/OFF nella riga)
 
-// Configurazione di default calibrata (aggiornabile con "Salva config")
-// Allineata alla mappatura operativa attuale:
-// ROLL(robot)  <- YAW(visore)
+// Configurazione di default: corrispondenza FISICA reale asse-per-asse.
+// Il firmware NON incorpora permutazioni del polso: ogni cella indica quale
+// asse del visore guida davvero il servo, così la tabella robot<->visore non
+// e' "cosmetica" (diagonale) ma rispecchia il movimento reale:
+// ROLL(robot)  <- YAW(visore)   [sign -1: ROLL in opposizione a YAW visore]
 // PITCH(robot) <- ROLL(visore)
 // YAW(robot)   <- PITCH(visore)
 let _pbStateDefault = {
-  roll:  { src: 0, sign: 1 },   // ROLL  ← YAW visore
+  roll:  { src: 0, sign: -1 },  // ROLL  ← YAW visore (invertito)
   pitch: { src: 2, sign: 1 },   // PITCH ← ROLL visore
   yaw:   { src: 1, sign: 1 },   // YAW   ← PITCH visore
 };

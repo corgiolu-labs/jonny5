@@ -14,9 +14,12 @@ from copy import deepcopy
 
 
 VR_PATCH_BAY_STATE_DEFAULTS = {
-    "roll": {"src": 0, "sign": 1},
-    "pitch": {"src": 2, "sign": 1},
-    "yaw": {"src": 1, "sign": 1},
+    # Corrispondenza FISICA reale asse-per-asse (niente diagonale "cosmetica"):
+    # il firmware non incorpora permutazioni del polso, quindi ogni cella indica
+    # quale asse del visore guida davvero il servo.
+    "roll": {"src": 0, "sign": -1},  # ROLL(robot)  <- YAW(visore)  [invertito]
+    "pitch": {"src": 2, "sign": 1},  # PITCH(robot) <- ROLL(visore)
+    "yaw": {"src": 1, "sign": 1},    # YAW(robot)   <- PITCH(visore)
 }
 
 VR_PATCH_BAY_ENABLE_DEFAULTS = {
