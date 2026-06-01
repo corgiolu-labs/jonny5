@@ -8,7 +8,13 @@ low-latency stereo video feedback from cameras mounted on the end-effector.
 This repository contains everything needed to **build and deploy** the system:
 STM32 firmware, Raspberry Pi control-plane, browser dashboard and VR viewer.
 
-![JONNY5 — the assembled 6-DoF arm flanked by the two Meta Quest headsets (Quest 1 / Quest 2) used for teleoperation](docs/jonny5_front_with_quest.png)
+![JONNY5 — immersive VR teleoperation platform for a 6-DoF robot arm](docs/jonny5_hero.png)
+
+## Demo
+
+![Live VR tele-inspection — the operator drives the arm from a VR headset while the end-effector stereo feed streams back in real time](docs/jonny5_teleop_demo.gif)
+
+*Live VR tele-inspection: head pose steers the wrist and the hand controllers drive the arm, while the end-effector stereo cameras stream back to the headset — the on-screen overlay shows the live video-latency / RTT.*
 
 ## Architecture (3 tiers)
 
@@ -41,6 +47,8 @@ The arm is a 6-DoF design — **BASE / SHOULDER / ELBOW** plus a 3-axis wrist
 (**YAW / PITCH / ROLL**) — actuated through the STM32 Nucleo-F446RE, supervised
 by a Raspberry Pi 5, with a **BNO085 IMU** on the end-effector and two CSI
 cameras providing the stereo video feed.
+
+![The assembled JONNY5 arm with the two Meta Quest headsets used for teleoperation](docs/jonny5_front_with_quest.png)
 
 ![Real views of the assembled JONNY5 arm — left / front / back / right](docs/jonny5_views_combined.png)
 
@@ -195,8 +203,9 @@ independent of the general-purpose Pi node.
 
 End-to-end latency was characterised across the video-pipeline profiles. The
 adopted low-latency VR profile (800×450 @ 120 fps, WebRTC/H.264) reaches an
-estimated **~38 ms** glass-to-glass — about half the MJPEG full-stack baseline
-and well under the ~100 ms VR perceptual threshold.
+estimated **~38 ms** glass-to-glass — about half the MJPEG full-stack latency at
+the same profile (≈ 38 ms vs ≈ 76 ms) — and well under the ~100 ms VR perceptual
+threshold.
 
 ![Estimated video latency across pipeline profiles — MediaMTX (WebRTC/H.264) vs MJPEG full-stack; the adopted low-latency VR profile reaches ~38 ms, under the ~100 ms VR threshold](media/images/latency_comparison.png)
 
@@ -210,6 +219,10 @@ The command path adds only ≈ 2.7 ms round-trip; operator-perceived latency is
 - Control-plane: `raspberry/controller/web_services/ws_server.py`
 - Firmware real-time loop: `firmware/stm32/src/core/rt_loop.c`
 - Authoritative runtime config: `raspberry/config_runtime/robot/routing_config.json`
+
+## License
+
+Released under the [MIT License](LICENSE) — © 2026 Alessandro Corgiolu.
 
 ---
 
