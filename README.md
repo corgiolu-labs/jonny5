@@ -1,5 +1,11 @@
 # JONNY5 — VR-Teleoperated 6-DoF Robot Arm
 
+![JONNY5 — immersive VR teleoperation platform for a 6-DoF robot arm](docs/jonny5_hero.png)
+
+![Live VR tele-inspection — the operator drives the arm from a VR headset while the end-effector stereo feed streams back in real time](docs/jonny5_teleop_demo.gif)
+
+*▶ Real-time VR tele-inspection — head pose steers the wrist, hand controllers drive the arm, and the end-effector stereo feed streams back to the headset (on-screen video-latency / RTT overlay).*
+
 Low-latency, immersive teleoperation platform for a 6-DoF robot arm, built on
 **open web standards** (WebXR + WebRTC) and consumer hardware. An operator
 wearing a VR headset controls the arm with their own head/hand pose and receives
@@ -7,14 +13,6 @@ low-latency stereo video feedback from cameras mounted on the end-effector.
 
 This repository contains everything needed to **build and deploy** the system:
 STM32 firmware, Raspberry Pi control-plane, browser dashboard and VR viewer.
-
-![JONNY5 — immersive VR teleoperation platform for a 6-DoF robot arm](docs/jonny5_hero.png)
-
-## Demo
-
-![Live VR tele-inspection — the operator drives the arm from a VR headset while the end-effector stereo feed streams back in real time](docs/jonny5_teleop_demo.gif)
-
-*Live VR tele-inspection: head pose steers the wrist and the hand controllers drive the arm, while the end-effector stereo cameras stream back to the headset — the on-screen overlay shows the live video-latency / RTT.*
 
 ## Architecture (3 tiers)
 
