@@ -26,7 +26,7 @@
  *
  *  RTR3: Hermite cubico          3τ²−2τ³       (C¹, S-curve minima)
  *  RTR5: Polinomio quintico      10τ³−15τ⁴+6τ⁵ (C², minimum-jerk)
- *  BB  : Bang-Bang               wrapper RTR3
+ *  BB  : Bang-Bang               2τ² | 1−2(1−τ)²  (accel ±cost. a tratti, baseline)
  *  BCB : Raised-cosine           (1−cos(πτ))/2  (C², crociera dolce)
  */
 typedef enum {
