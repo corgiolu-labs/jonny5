@@ -212,6 +212,21 @@ The command path adds only ≈ 2.7 ms round-trip; operator-perceived latency is
 
 ![Teleoperation latency budget — command path ≈ 2.7 ms round-trip and video path ≈ 38–62 ms end-to-end, for ≈ 62 ms perceived in-headset](media/images/teleoperation_performance.png)
 
+## AI-Augmented Development
+
+JONNY5 was developed with AI coding agents as a first-class part of the workflow.
+I used and tested three of them — **Claude Code** (Anthropic), **OpenAI Codex**
+and **Cursor** — across the project: firmware (the 1 kHz real-time loop, BNO085
+IMU driver, SPI J5VR protocol, safety gating), the PoE inverse-kinematics
+control-plane, system integration, debugging, and the validation/audit tooling.
+
+The division of labour is deliberate and human-in-the-loop: I own the
+architecture, the real-time and hardware design decisions, and all on-hardware
+validation; the agents accelerate implementation, debugging, tooling and data
+analysis. Nothing reaches the robot without my explicit sign-off — every commit
+in this repository carries a `Co-Authored-By` AI trailer, and the agents never
+act on hardware autonomously.
+
 ## Code entry points
 
 - Control-plane: `raspberry/controller/web_services/ws_server.py`
