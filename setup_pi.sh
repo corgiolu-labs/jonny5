@@ -2,7 +2,7 @@
 # =============================================================================
 # setup_pi.sh — JONNY5 Raspberry Pi first-time setup
 #
-# Da eseguire UNA SOLA VOLTA su un Raspberry Pi OS fresco (Bookworm/Bullseye),
+# Da eseguire UNA SOLA VOLTA su un Raspberry Pi OS fresco (Trixie/Debian 13),
 # PRIMA del primo deploy.sh.
 #
 # Cosa fa:
