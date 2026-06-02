@@ -1,0 +1,19 @@
+{
+  "description": "BNO085 Rotation-Vector world-frame yaw bias (magnetometer-dependent). Refresh when BNO085 yaw reference drifts. Validators only; not consumed by operational path.",
+  "quat_wxyz": [
+    0.44956270779074226,
+    0.0,
+    0.0,
+    -0.8932487737264774
+  ],
+  "rpy_deg": [
+    0.0,
+    0.0,
+    -126.56873760330879
+  ],
+  "calibrated_at": "2026-05-15T07:50:29",
+  "samples": 381,
+  "duration_s": 20.0,
+  "rate_hz_target": 30.0,
+  "source": "dashboard_home"
+}

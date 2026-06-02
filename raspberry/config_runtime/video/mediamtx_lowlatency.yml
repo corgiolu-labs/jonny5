@@ -1,9 +1,9 @@
 # MediaMTX — profilo LOWLATENCY (default baseline JONNY5)
-# Dual camera 800x450 @ 120 FPS, bitrate 3 Mbps.
+# Dual camera 800x450 @ 60 FPS, bitrate 3 Mbps.
 # Latenza video target ~37 ms glass-to-glass.
 
 logLevel: info
-writeQueueSize: 64
+writeQueueSize: 256
 readTimeout: 5s
 writeTimeout: 5s
 
@@ -22,10 +22,10 @@ paths:
     rpiCameraCamID: 0
     rpiCameraWidth: 800
     rpiCameraHeight: 450
-    rpiCameraFPS: 120
+    rpiCameraFPS: 60
     rpiCameraCodec: auto
     rpiCameraDenoise: "off"
-    rpiCameraIDRPeriod: 20
+    rpiCameraIDRPeriod: 15
     rpiCameraBitrate: 3000000
     rpiCameraAfMode: continuous
     rpiCameraAfRange: normal
@@ -34,10 +34,10 @@ paths:
     rpiCameraCamID: 1
     rpiCameraWidth: 800
     rpiCameraHeight: 450
-    rpiCameraFPS: 120
+    rpiCameraFPS: 60
     rpiCameraCodec: auto
     rpiCameraDenoise: "off"
-    rpiCameraIDRPeriod: 20
+    rpiCameraIDRPeriod: 15
     rpiCameraBitrate: 3000000
     rpiCameraAfMode: continuous
     rpiCameraAfRange: normal

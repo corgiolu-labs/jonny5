@@ -1,21 +1,22 @@
 {
-  "description": "Fixed IMU mounting rotation relative to EE/tool frame.",
+  "description": "Fixed IMU mounting rotation relative to EE/tool frame (mechanical only, yaw forced to 0). The yaw component lives in imu_world_bias.json (magnetometer-dependent), not here.",
   "quat_wxyz": [
-    0.9978145291471898,
-    0.0553353613787577,
-    0.002751663137535594,
-    0.03600821508811257
+    0.9997828867211838,
+    0.01980746151099253,
+    -0.006467416054050245,
+    0.00012813091348892074
   ],
   "rpy_deg": [
-    6.351469014700646,
-    0.08630144110213325,
-    4.138269674565975
+    2.2699638383030964,
+    -0.7412618891380849,
+    0.0
   ],
-  "calibrated_at": "2026-04-01T13:57:06",
-  "samples": 25,
-  "duration_s": 3.0,
-  "rate_hz_target": 8.0,
-  "samples_total": 25,
-  "samples_inlier": 25,
-  "outlier_threshold_deg": 15.0
+  "calibrated_at": "2026-04-19T12:52:21",
+  "samples": 392,
+  "duration_s": 20.0,
+  "rate_hz_target": 30.0,
+  "samples_total": 392,
+  "samples_inlier": 392,
+  "outlier_threshold_deg": 15.0,
+  "yaw_explicitly_zeroed": true
 }

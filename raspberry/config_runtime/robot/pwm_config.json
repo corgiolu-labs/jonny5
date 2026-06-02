@@ -1,0 +1,10 @@
+{
+  "tim8_hz": 50,
+  "tim8_min_us": 500,
+  "tim8_max_us": 2500,
+  "tim8_max_deg": 180,
+  "tim1_hz": 330,
+  "tim1_min_us": 500,
+  "tim1_max_us": 2500,
+  "tim1_max_deg": 180
+}

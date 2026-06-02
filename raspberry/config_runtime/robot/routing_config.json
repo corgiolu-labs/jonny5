@@ -18,7 +18,7 @@
     "pitch": true,
     "yaw": true
   },
-  "savedAt": "2026-04-11T14:30:27.491Z",
+  "savedAt": "2026-05-15T14:53:38.000Z",
   "tuning": {
     "tg-vel-base": 54,
     "tg-vel-spalla": 54,
@@ -29,37 +29,34 @@
     "tg-vel-yaw-head": 400,
     "tg-vel-pitch-head": 200,
     "tg-vel-roll-head": 200,
-    "tg-vel-base-head": 600,
-    "tg-vel-spalla-head": 54,
-    "tg-vel-gomito-head": 54,
-    "tg-roll-level": false,
-    "tg-pitch-level": false,
-    "tg-yaw-level": false
+    "tg-vel-base-head": 238,
+    "tg-vel-spalla-head": 233,
+    "tg-vel-gomito-head": 224
   },
   "limits": {
     "base": {
-      "min": 45,
-      "max": 135
+      "min": 5,
+      "max": 175
     },
     "spalla": {
-      "min": 30,
-      "max": 145
+      "min": 5,
+      "max": 175
     },
     "gomito": {
-      "min": 30,
-      "max": 145
+      "min": 5,
+      "max": 175
     },
     "yaw": {
-      "min": 45,
-      "max": 135
+      "min": 5,
+      "max": 175
     },
     "pitch": {
-      "min": 35,
-      "max": 120
+      "min": 40,
+      "max": 130
     },
     "roll": {
-      "min": 45,
-      "max": 135
+      "min": 20,
+      "max": 160
     }
   },
   "manualRpyUi": {
@@ -154,9 +151,9 @@
       "spalla": 0.5,
       "gomito": 0.5
     },
-    "assistAlpha": 0.72,
+    "assistAlpha": 0.48,
     "freeFollowAlpha": 0.26,
-    "maxStepDegPerTick": 4.0,
+    "maxStepDegPerTick": 6.0,
     "reliefDeadband": 0.02,
     "releaseGraceMs": 220.0,
     "armReliefGainMul": 2.2,
@@ -171,5 +168,14 @@
     "headMotionMaxStepDegPerTick": 4.0,
     "pitchReachEnabled": true,
     "pitchReachBias": 0.82
+  },
+  "assistMode": "rate",
+  "assistDls": {
+    "gainM": 0.27,
+    "lambdaMax": 0.12,
+    "manipThresh": 0.001,
+    "maxDqDegPerTick": 3,
+    "maxDxMmPerTick": 15,
+    "nullSpaceGain": 0.2
   }
 }
