@@ -111,7 +111,7 @@ done
 # ---------------------------------------------------------------------------
 # 3. Abilita SPI
 # ---------------------------------------------------------------------------
-step "[3/5] Abilitazione SPI..."
+step "[3/5] Abilitazione interfacce hardware (SPI + camere + UART)..."
 
 if raspi-config nonint do_spi 0 2>/dev/null; then
     ok "SPI abilitato via raspi-config."
@@ -132,6 +132,40 @@ else
         warn "Impossibile abilitare SPI automaticamente. Abilitare manualmente con raspi-config."
     fi
 fi
+
+# --- Camere (2x IMX708) + UART verso STM32 ---
+# Config hardware PROVATA, non gestita da raspi-config: due Camera Module 3 (IMX708)
+# su cam0/cam1 + UART0 sul 40-pin header per il link seriale allo STM32 (TELEOPPOSE,
+# /dev/serial0 -> ttyAMA0 @ 115200; vedi controller/uart/uart_manager.py).
+BOOT_CFG=""
+[ -f "/boot/firmware/config.txt" ] && BOOT_CFG="/boot/firmware/config.txt"
+[ -f "/boot/config.txt" ]          && BOOT_CFG="/boot/config.txt"
+
+if [ -z "$BOOT_CFG" ]; then
+    warn "config.txt non trovato — camere/UART da configurare a mano."
+elif grep -q "JONNY5 cameras + UART" "${BOOT_CFG}"; then
+    ok "Camere + UART già presenti in ${BOOT_CFG} — skip."
+else
+    cat >> "${BOOT_CFG}" <<'CFG'
+
+# === JONNY5 cameras + UART (added by setup_pi.sh) ===
+# [all] forza l'applicazione a tutte le revisioni (niente scoping a [cm4]/[pi5]).
+# Due Camera Module 3 (IMX708): cam0 = i2c@88000, cam1 = i2c@80000.
+[all]
+camera_auto_detect=1
+dtoverlay=imx708,cam0
+dtoverlay=imx708,cam1
+# UART0 sull'header per lo STM32 (la console seriale resta OFF: cmdline = console=tty1).
+dtparam=uart0=on
+enable_uart=1
+dtoverlay=uart0-pi5
+CFG
+    ok "Camere (IMX708 cam0/cam1) + UART aggiunte a ${BOOT_CFG} (richiede reboot)."
+fi
+
+# Guardia: nessuna console di login deve occupare la UART dello STM32.
+# (idempotente; su raspi-config recenti tocca solo la console, NON l'hardware UART.)
+raspi-config nonint do_serial_cons 1 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
 # 4. Hotspot WiFi via NetworkManager
@@ -190,8 +224,9 @@ echo -e "==============================================${NC}"
 echo ""
 echo " Prossimi passi:"
 echo ""
-echo "  1. Reboot del Pi (per applicare SPI e hotspot):"
+echo "  1. Reboot del Pi (per applicare SPI, camere, UART e hotspot):"
 echo "     sudo reboot"
+echo "     (post-reboot: rpicam-hello --list-cameras  -> 2x imx708;  ls -l /dev/serial0)"
 echo ""
 echo "  2. Dal PC, esegui il deploy:"
 echo "     ./deploy.sh ${JONNY5_USER}@${JONNY5_IP}"
