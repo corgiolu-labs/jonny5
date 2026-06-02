@@ -32,6 +32,7 @@ WIFI_PASSWORD="${2:-jonny5robot}"
 JONNY5_USER="jonny5"
 JONNY5_IP="10.42.0.1"
 REMOTE_DIR="/home/${JONNY5_USER}/raspberry5"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # ---------------------------------------------------------------------------
 # Colori
@@ -170,7 +171,7 @@ raspi-config nonint do_serial_cons 1 2>/dev/null || true
 # ---------------------------------------------------------------------------
 # 4. Hotspot WiFi via NetworkManager
 # ---------------------------------------------------------------------------
-step "[4/5] Configurazione hotspot WiFi '${WIFI_SSID}' su ${JONNY5_IP}..."
+step "[4/5] Configurazione rete (hotspot WiFi + eth0 ICS/router autoswitch)..."
 
 # Assicura NetworkManager attivo
 systemctl enable --now NetworkManager 2>/dev/null || true
@@ -196,6 +197,40 @@ ok "Hotspot '${WIFI_SSID}' configurato."
 
 # Attiva subito
 nmcli con up "jonny5-ap" 2>/dev/null && ok "Hotspot attivato." || warn "Attivazione posticipata al reboot (wlan0 potrebbe essere in uso)."
+
+# --- eth0: profili ICS-static (.221) + DHCP, commutati dal demone autoswitch ---
+# Rimuovi la connessione wired di default creata da NetworkManager (se presente)
+nmcli con delete "Wired connection 1" 2>/dev/null || true
+# Profilo statico ICS .221 (autoconnect=no: la commutazione la fa j5-net-autoswitch)
+nmcli con delete "eth0-ics-static" 2>/dev/null || true
+nmcli con add type ethernet ifname eth0 con-name "eth0-ics-static" \
+    ipv4.method manual \
+    ipv4.addresses "192.168.137.221/24" \
+    ipv4.gateway "192.168.137.1" \
+    ipv4.dns "192.168.137.1 8.8.8.8" \
+    ipv4.route-metric 100 \
+    connection.autoconnect no
+# Profilo DHCP (default su un router normale, es. casa)
+nmcli con delete "eth0-dhcp" 2>/dev/null || true
+nmcli con add type ethernet ifname eth0 con-name "eth0-dhcp" \
+    ipv4.method auto \
+    ipv4.route-metric 50 \
+    connection.autoconnect yes
+ok "Profili eth0 creati (ics-static .221 + dhcp)."
+
+# Demone autoswitch: al boot forza il profilo giusto in base alla subnet
+#   192.168.137.x (ICS Windows) -> .221 ;  192.168.10.x (router casa) -> DHCP
+NET_SRC="${SCRIPT_DIR}/raspberry/network"
+if [ -f "${NET_SRC}/j5_net_autoswitch.sh" ] && [ -f "${NET_SRC}/j5-net-autoswitch.service" ]; then
+    install -m 755 "${NET_SRC}/j5_net_autoswitch.sh" /usr/local/sbin/j5_net_autoswitch.sh
+    install -m 644 "${NET_SRC}/j5-net-autoswitch.service" /etc/systemd/system/j5-net-autoswitch.service
+    systemctl daemon-reload
+    systemctl enable j5-net-autoswitch.service 2>/dev/null \
+        && ok "Demone j5-net-autoswitch abilitato (parte al prossimo boot)." \
+        || warn "Impossibile abilitare j5-net-autoswitch."
+else
+    warn "raspberry/network/ non trovato (${NET_SRC}) — demone autoswitch NON installato."
+fi
 
 # ---------------------------------------------------------------------------
 # 5. Configurazione finale
