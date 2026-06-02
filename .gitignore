@@ -73,3 +73,6 @@ mediamtx-*.tar.gz
 
 # --- Deliverable tesi/difesa: SOLO locale, NON pubblicare online ---
 /TESI/
+
+# --- Backup pre-wipe del Pi: SOLO locale (contiene segreti: TLS key, WiFi PSK, ssh) ---
+/jonny5_pi_backup_*/
