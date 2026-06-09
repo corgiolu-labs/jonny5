@@ -6,6 +6,8 @@
 
 *▶ Real-time VR tele-inspection — head pose steers the wrist, hand controllers drive the arm, and the end-effector stereo feed streams back to the headset (on-screen video-latency / RTT overlay).*
 
+**🎥 Watch the demo on YouTube:** https://youtu.be/Z4k5WhVlsj8
+
 Low-latency, immersive teleoperation platform for a 6-DoF robot arm, built on
 **open web standards** (WebXR + WebRTC) and consumer hardware. An operator
 wearing a VR headset controls the arm with their own head/hand pose and receives
