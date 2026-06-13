@@ -228,8 +228,8 @@ The division of labour is deliberate and human-in-the-loop: I own the
 architecture, the real-time and hardware design decisions, and all on-hardware
 validation; the agents accelerate implementation, debugging, tooling and data
 analysis. Nothing reaches the robot without my explicit sign-off — every commit
-in this repository carries a `Co-Authored-By` AI trailer, and the agents never
-act on hardware autonomously.
+that touches code, firmware or config in this repository carries a
+`Co-Authored-By` AI trailer, and the agents never act on hardware autonomously.
 
 ## Code entry points
 
