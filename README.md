@@ -206,10 +206,10 @@ independent of the general-purpose Pi node.
 ## Performance
 
 End-to-end latency was characterised across the video-pipeline profiles. The
-adopted low-latency VR profile (800×450 @ 120 fps, WebRTC/H.264) reaches an
-estimated **~38 ms** glass-to-glass — about half the MJPEG full-stack latency at
-the same profile (≈ 38 ms vs ≈ 76 ms) — and well under the ~100 ms VR perceptual
-threshold.
+adopted low-latency VR profile (800×450 @ 120 fps, WebRTC/H.264) measures
+in the **38–65 ms** glass-to-glass range depending on the test configuration —
+roughly half the MJPEG full-stack latency at the same profile — and well under the
+~100 ms VR perceptual threshold.
 
 ![Estimated video latency across pipeline profiles — MediaMTX (WebRTC/H.264) vs MJPEG full-stack; the adopted low-latency VR profile reaches ~38 ms, under the ~100 ms VR threshold](media/images/latency_comparison.png)
 
