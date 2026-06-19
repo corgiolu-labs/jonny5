@@ -1,5 +1,7 @@
 # JONNY5 — VR-Teleoperated 6-DoF Robot Arm
 
+[![firmware-tests](https://github.com/corgiolu-labs/jonny5/actions/workflows/ci.yml/badge.svg)](https://github.com/corgiolu-labs/jonny5/actions/workflows/ci.yml)
+
 ![JONNY5 — immersive VR teleoperation platform for a 6-DoF robot arm](docs/jonny5_hero.png)
 
 ![Live VR tele-inspection — the operator drives the arm from a VR headset while the end-effector stereo feed streams back in real time](docs/jonny5_teleop_demo.gif)

@@ -1,0 +1,24 @@
+name: firmware-tests
+
+# Host-side unit tests for the STM32 firmware: pure logic compiled and run with
+# a stock gcc (no board, no Zephyr). Keeps the quaternion / control math honest.
+
+on:
+  push:
+    paths:
+      - "firmware/stm32/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "firmware/stm32/**"
+  workflow_dispatch:
+
+jobs:
+  host-unit-tests:
+    name: STM32 firmware — host unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build & run host unit tests
+        working-directory: firmware/stm32/test
+        run: make test
