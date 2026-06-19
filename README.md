@@ -10,7 +10,7 @@
 
 **🎥 Watch the demo on YouTube:** https://youtu.be/Z4k5WhVlsj8
 
-**🤖 ROS 2 migration:** see [jonny5_ROS2_VR](https://github.com/corgiolu-labs/jonny5_ROS2_VR) — a ROS 2 layer (custom messages, URDF model, hardware-bridge and VR-teleop nodes) built around the proven real-time core of this repository.
+**🤖 ROS 2 migration (experimental, AI-assisted):** see [jonny5_ROS2_VR](https://github.com/corgiolu-labs/jonny5_ROS2_VR) — an exploratory ROS 2 layer (custom messages, URDF model, hardware-bridge and VR-teleop nodes) around the proven real-time core of this repository.
 
 Low-latency, immersive teleoperation platform for a 6-DoF robot arm, built on
 **open web standards** (WebXR + WebRTC) and consumer hardware. An operator
