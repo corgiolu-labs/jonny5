@@ -12,6 +12,17 @@
 
 **🤖 ROS 2 migration (experimental, AI-assisted):** see [jonny5_ROS2_VR](https://github.com/corgiolu-labs/jonny5_ROS2_VR) — an exploratory ROS 2 layer (custom messages, URDF model, hardware-bridge and VR-teleop nodes) around the proven real-time core of this repository.
 
+## What this repository proves
+
+- **Physical system delivery:** a built and bench-validated 6-DoF robot, not a simulation-only project.
+- **Full-stack integration:** STM32/Zephyr firmware, Raspberry Pi middleware, sensing, networking and browser/VR interfaces.
+- **Real-time and safety engineering:** deterministic 1 kHz actuation, fixed-frame SPI, deadman, watchdog and joint limits.
+- **Teleoperation infrastructure:** WebXR pose input, WebSocket commands and stereo WebRTC/H.264 feedback.
+- **Measured performance:** repeatable command-path and glass-to-glass video measurements with diagnostic tooling.
+- **Operational deployment:** shell-based provisioning, SSH/rsync deployment, systemd services, logging and hardware diagnostics.
+
+**Validation status:** the core system shown here has been exercised on the physical robot. The separate ROS 2 migration is experimental and defaults to mock/dry-run operation; its real-hardware validation is tracked independently.
+
 Low-latency, immersive teleoperation platform for a 6-DoF robot arm, built on
 **open web standards** (WebXR + WebRTC) and consumer hardware. An operator
 wearing a VR headset controls the arm with their own head/hand pose and receives
@@ -218,20 +229,12 @@ The command path adds only ≈ 2.7 ms round-trip; operator-perceived latency is
 
 ![Teleoperation latency budget — command path ≈ 2.7 ms round-trip and video path ≈ 38–62 ms end-to-end, for ≈ 62 ms perceived in-headset](media/images/teleoperation_performance.png)
 
-## AI-Augmented Development
+## Development provenance
 
-JONNY5 was developed with AI coding agents as a first-class part of the workflow.
-I used and tested three of them — **Claude Code** (Anthropic), **OpenAI Codex**
-and **Cursor** — across the project: firmware (the 1 kHz real-time loop, BNO085
-IMU driver, SPI J5VR protocol, safety gating), the PoE inverse-kinematics
-control-plane, system integration, debugging, and the validation/audit tooling.
-
-The division of labour is deliberate and human-in-the-loop: I own the
-architecture, the real-time and hardware design decisions, and all on-hardware
-validation; the agents accelerate implementation, debugging, tooling and data
-analysis. Nothing reaches the robot without my explicit sign-off — every commit
-that touches code, firmware or config in this repository carries a
-`Co-Authored-By` AI trailer, and the agents never act on hardware autonomously.
+AI coding tools assisted implementation, review and analysis. System architecture,
+engineering decisions, bench work, hardware validation and final technical sign-off
+remain human-owned. Performance claims in this repository refer to measurements on
+the physical system unless explicitly marked as simulated, estimated or planned.
 
 ## Code entry points
 
