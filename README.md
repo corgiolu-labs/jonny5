@@ -12,6 +12,28 @@
 
 **🤖 ROS 2 migration (experimental, AI-assisted):** see [jonny5_ROS2_VR](https://github.com/corgiolu-labs/jonny5_ROS2_VR) — an exploratory ROS 2 layer (custom messages, URDF model, hardware-bridge and VR-teleop nodes) around the proven real-time core of this repository.
 
+## Thesis & defence
+
+The full MSc thesis behind this project is available in
+[**Release `thesis-v1`**](https://github.com/corgiolu-labs/jonny5/releases/tag/thesis-v1):
+
+| Document | Language | |
+|---|---|---|
+| MSc thesis — 149 pp. | English *(courtesy translation)* | [Download PDF](https://github.com/corgiolu-labs/jonny5/releases/download/thesis-v1/JONNY5_MSc_Thesis_EN.pdf) |
+| Tesi magistrale — 151 pp. | Italian *(official, defended version)* | [Download PDF](https://github.com/corgiolu-labs/jonny5/releases/download/thesis-v1/JONNY5_Tesi_Magistrale_IT.pdf) |
+| Defence slides — 15 slides | English | [Download PPTX](https://github.com/corgiolu-labs/jonny5/releases/download/thesis-v1/JONNY5_Defence_Slides_EN.pptx) |
+| Slide di discussione — 15 slide | Italian | [Download PPTX](https://github.com/corgiolu-labs/jonny5/releases/download/thesis-v1/JONNY5_Slide_Discussione_IT.pptx) |
+
+*Design and experimental validation of a robotic platform for immersive virtual-reality
+teleoperation: the JONNY5 system* — MSc in Management Engineering, Università Telematica
+Internazionale UNINETTUNO, Faculty of Engineering. Supervisor: Prof. Renato Quartullo.
+Discussed July 2026, grade 103/110.
+
+The thesis documents the three-tier architecture, the mechanical design, the Product-of-Exponentials
+kinematics and inverse-kinematics solver, the experimental validation (latency, control-loop rate,
+mechanical bandwidth via Welch PSD) and a cost/performance benchmark against academic and commercial
+VR teleoperation systems.
+
 ## What this repository proves
 
 - **Physical system delivery:** a built and bench-validated 6-DoF robot, not a simulation-only project.
