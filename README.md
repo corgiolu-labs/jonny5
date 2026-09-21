@@ -12,6 +12,8 @@
 
 **🤖 ROS 2 migration (experimental, AI-assisted):** see [jonny5_ROS2_VR](https://github.com/corgiolu-labs/jonny5_ROS2_VR) — an exploratory ROS 2 layer (custom messages, URDF model, hardware-bridge and VR-teleop nodes) around the proven real-time core of this repository.
 
+**🔧 Hardware revision:** this repository documents the thesis build on the **STM32 Nucleo-F446RE**. The arm now runs on the **JONNY5 SHIELD rev3**, a custom 4-layer carrier board (Raspberry Pi 5 + **STM32G474**). The G474 firmware port and the fail-safe hardware E-STOP live in [jonny5_ROS2_VR](https://github.com/corgiolu-labs/jonny5_ROS2_VR#firmware-hardware-targets), which builds both boards from the same source tree.
+
 ## Thesis & defence
 
 The full MSc thesis behind this project is available in
@@ -233,8 +235,10 @@ and a 54-byte payload. The payload `mode` byte selects the teleop mode
 carries the BASE / SHOULDER / ELBOW arm targets as big-endian `int16` centi-degrees.
 
 ### Safety
-Firmware-side deadman + heartbeat watchdog (100 ms) and servo limits,
-independent of the general-purpose Pi node.
+Firmware-side deadman + SPI frame watchdog and servo limits, independent of the
+general-purpose Pi node. The watchdog is checked every 100 ms: if no valid frame has
+arrived for more than 500 ms (`SPI_FRAME_TIMEOUT_MS`), the state machine is forced to
+`SAFE` and the servos are disabled.
 
 ## Performance
 
