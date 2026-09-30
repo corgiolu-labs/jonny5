@@ -42,7 +42,7 @@ VR teleoperation systems.
 - **Full-stack integration:** STM32/Zephyr firmware, Raspberry Pi middleware, sensing, networking and browser/VR interfaces.
 - **Real-time and safety engineering:** deterministic 1 kHz actuation, fixed-frame SPI, deadman, watchdog and joint limits.
 - **Teleoperation infrastructure:** WebXR pose input, WebSocket commands and stereo WebRTC/H.264 feedback.
-- **Measured performance:** repeatable command-path and glass-to-glass video measurements with diagnostic tooling.
+- **Measured performance:** repeatable command-path and estimated video-latency measurements with diagnostic tooling.
 - **Operational deployment:** shell-based provisioning, SSH/rsync deployment, systemd services, logging and hardware diagnostics.
 
 **Validation status:** the core system shown here has been exercised on the physical robot. The separate ROS 2 migration is experimental and defaults to mock/dry-run operation; its real-hardware validation is tracked independently.
@@ -244,9 +244,11 @@ arrived for more than 500 ms (`SPI_FRAME_TIMEOUT_MS`), the state machine is forc
 
 End-to-end latency was characterised across the video-pipeline profiles. The
 adopted low-latency VR profile (800×450 @ 120 fps, WebRTC/H.264) measures
-in the **38–65 ms** glass-to-glass range depending on the test configuration —
+in the **38–65 ms** *estimated* video-latency range depending on the test configuration —
 roughly half the MJPEG full-stack latency at the same profile — and well under the
-~100 ms VR perceptual threshold.
+~100 ms VR perceptual threshold. Video latency is estimated from inter-frame timing and
+the protocol's typical buffering depth (thesis §10.4); it is not a photon-to-photon
+(camera-to-display) measurement.
 
 ![Estimated video latency across pipeline profiles — MediaMTX (WebRTC/H.264) vs MJPEG full-stack; the adopted low-latency VR profile reaches ~38 ms, under the ~100 ms VR threshold](media/images/latency_comparison.png)
 
