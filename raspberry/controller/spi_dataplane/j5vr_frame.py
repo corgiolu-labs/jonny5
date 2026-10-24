@@ -25,13 +25,13 @@ J5_PROTOCOL_VERSION = 1
 def _norm_float_to_i16(x) -> int:
     """
     Accetta int16 già scalato oppure float normalizzato [-1..1].
-    Identico alla vecchia nested to_i16() in build_setpoint_frame().
-    Se arriva un int piccolo (-1..1), lo considera normalizzato per compatibilità.
+
+    Un int è SEMPRE un valore int16 già scalato (validate_and_build_intent converte i float):
+    viene solo limitato a [-32768, 32767], mai riscalato. In passato un int in -1..1 veniva
+    trattato come normalizzato "per compatibilità": uno stick a 1/32767 dal centro (int 1)
+    diventava +32767, cioè un comando a fondo scala (fix 2026-10-24, test_j5vr_frame.py).
     """
     if isinstance(x, int):
-        if -1 <= x <= 1:
-            v = float(x)
-            return max(-32768, min(32767, int(round(v * 32767))))
         return max(-32768, min(32767, int(x)))
     try:
         v = float(x)
